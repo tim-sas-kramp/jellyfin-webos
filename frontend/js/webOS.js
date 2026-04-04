@@ -10,11 +10,27 @@
 
     console.log('WebOS adapter');
 
+    var multiUser = AppInfo && AppInfo.multiUser ? AppInfo.multiUser : {};
+
     function postMessage(type, data) {
         window.top.postMessage({
             type: type,
             data: data
         }, '*');
+    }
+
+    function openLauncherUserPicker(messageType) {
+        try {
+            if (window.top && typeof window.top.showUserPicker === 'function') {
+                window.top.showUserPicker();
+                return true;
+            }
+        } catch (error) {
+            console.warn('[webOS] direct launcher access failed', error);
+        }
+
+        postMessage(messageType || 'multiUser.openSwitcher');
+        return false;
     }
 
     // List of supported features
@@ -105,7 +121,41 @@
         },
 
         selectServer: function () {
-            postMessage('selectServer');
+            openLauncherUserPicker('selectServer');
+        },
+
+        openUserSwitcher: function () {
+            openLauncherUserPicker('multiUser.openSwitcher');
+        },
+
+        onLocalUserSignedIn: function (user, accessToken) {
+            var apiClient = window.ApiClient;
+            var serverInfo = apiClient && typeof apiClient.serverInfo === 'function' ? (apiClient.serverInfo() || {}) : {};
+            var payload = {
+                userId: user && user.Id,
+                displayName: user && user.Name,
+                accessToken: accessToken || (apiClient && typeof apiClient.accessToken === 'function' ? apiClient.accessToken() : null),
+                serverId: serverInfo.Id || (multiUser.server && multiUser.server.serverId) || null,
+                serverName: serverInfo.Name || (multiUser.server && multiUser.server.serverName) || null,
+                baseurl: (apiClient && typeof apiClient.serverAddress === 'function' ? apiClient.serverAddress() : null) || (multiUser.server && multiUser.server.baseurl) || null,
+                hosturl: (multiUser.server && multiUser.server.hosturl) || null
+            };
+
+            postMessage('multiUser.signedIn', payload);
+            return Promise.resolve(payload);
+        },
+
+        onLocalUserSignedOut: function (logoutInfo) {
+            postMessage('multiUser.signedOut', {
+                logoutInfo: logoutInfo || null,
+                sessionId: multiUser.activeSession ? multiUser.activeSession.id : null
+            });
+
+            return Promise.resolve(logoutInfo || {});
+        },
+
+        getMultiUserContext: function () {
+            return multiUser;
         },
 
         downloadFile: function (url) {

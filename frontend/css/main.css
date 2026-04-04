@@ -31,6 +31,64 @@ body {
     height: 100%;
 }
 
+.dialog_overlay {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 20;
+    display: -webkit-box;
+    display: flex;
+    -webkit-box-align: center;
+            align-items: center;
+    -webkit-box-pack: center;
+            justify-content: center;
+    background: rgba(0, 0, 0, 0.72);
+}
+
+.dialog_card {
+    width: 38%;
+    min-width: 28rem;
+    padding: 1.4rem 1.6rem 1.2rem;
+    border-radius: 0.8rem;
+    background: #161616;
+    border: 1px solid #292929;
+    -webkit-box-shadow: 0 1.25rem 3rem rgba(0, 0, 0, 0.4);
+            box-shadow: 0 1.25rem 3rem rgba(0, 0, 0, 0.4);
+}
+
+.dialog_card h2 {
+    margin: 0 0 0.35rem;
+    font-size: 1.05em;
+}
+
+.dialog_field {
+    margin: 0.65rem 0;
+}
+
+.dialog_error {
+    color: #000;
+    background: tomato;
+    border-radius: 0.2rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.55em;
+}
+
+.dialog_actions {
+    display: -webkit-box;
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.dialog_actions button {
+    margin: 0;
+    width: auto;
+    -webkit-box-flex: 1;
+            flex: 1;
+}
+
 .container {
     position: absolute;
     height: 100%;
@@ -54,6 +112,15 @@ body {
 .container > div {
     display: inline-block;
     width: 60%;
+}
+
+#userPicker,
+#serverInfoForm {
+    width: 60%;
+}
+
+#userPicker {
+    text-align: center;
 }
 
 #logo {
@@ -97,6 +164,7 @@ input[type=checkbox] {
 
 input[type=text],
 input[type=url],
+input[type=password],
 input[type=checkbox],
 textarea {
     border: 2px solid #292929;
@@ -106,16 +174,24 @@ textarea {
 
 input[type=text]:focus,
 input[type=url]:focus,
+input[type=password]:focus,
 input[type=checkbox]:focus,
 textarea:focus {
     border-color: #00A4DC;
+    background-color: rgba(0, 164, 220, 0.14);
+    box-shadow: 0 0 0 0.18rem rgba(0, 164, 220, 0.28);
 }
 
 input[type=text],
 input[type=url],
+input[type=password],
 textarea,
 button {
     width: 100%;
+}
+
+#pinModal input[type=password] {
+    font-weight: 700;
 }
 
 button {
@@ -127,6 +203,231 @@ button {
 
 button:focus {
     background: #00A4DC;
+}
+
+.helpertext {
+    color: gray;
+    font-size: 0.7em;
+    margin: 0 0 0.75rem;
+}
+
+.picker_header {
+    margin-bottom: 2rem;
+}
+
+#pickerTitle {
+    margin: 0 0 0.35rem;
+    font-size: 1.85em;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+#sessionMessage {
+    max-width: 34rem;
+    margin: 0 auto;
+    color: #b0b8c4;
+}
+
+#userlist {
+    list-style: none;
+    padding: 0;
+    margin: 0 auto;
+    display: -webkit-box;
+    display: flex;
+    -webkit-box-pack: center;
+            justify-content: center;
+    -webkit-box-align: start;
+            align-items: flex-start;
+    -webkit-box-lines: multiple;
+            flex-wrap: wrap;
+    max-width: 64rem;
+    gap: 1.75rem 1.5rem;
+}
+
+.user_card {
+    list-style: none;
+    width: 13.5rem;
+    text-align: center;
+}
+
+.user_card_meta {
+    min-width: 0;
+    width: 100%;
+}
+
+.profile_button,
+.profile_remove,
+.profile_pin {
+    margin: 0;
+}
+
+.profile_button {
+    display: -webkit-box;
+    display: flex;
+    -webkit-box-orient: vertical;
+    -webkit-box-direction: normal;
+            flex-direction: column;
+    -webkit-box-align: center;
+            align-items: center;
+    -webkit-box-pack: start;
+            justify-content: flex-start;
+    width: 100%;
+    min-height: 15.5rem;
+    padding: 1.2rem 1rem 1.3rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1.2rem;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+    -webkit-box-shadow: 0 0.9rem 2.2rem rgba(0, 0, 0, 0.22);
+            box-shadow: 0 0.9rem 2.2rem rgba(0, 0, 0, 0.22);
+}
+
+.profile_button:focus,
+.user_card:focus-within .profile_button {
+    background: linear-gradient(180deg, rgba(0, 164, 220, 0.24), rgba(19, 182, 216, 0.08));
+    border-color: #49d0ff;
+    -webkit-box-shadow: 0 0 0 0.22rem rgba(73, 208, 255, 0.18), 0 1.1rem 2.6rem rgba(0, 0, 0, 0.38);
+            box-shadow: 0 0 0 0.22rem rgba(73, 208, 255, 0.18), 0 1.1rem 2.6rem rgba(0, 0, 0, 0.38);
+    -webkit-transform: translateY(-0.2rem) scale(1.02);
+            transform: translateY(-0.2rem) scale(1.02);
+}
+
+.profile_avatar {
+    position: relative;
+    width: 7.4rem;
+    height: 7.4rem;
+    margin: 0 auto 1rem;
+    border-radius: 50%;
+    border: 0.18rem solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(160deg, #1f67d1, #2bcbeb);
+    color: #fff;
+    display: -webkit-box;
+    display: flex;
+    -webkit-box-align: center;
+            align-items: center;
+    -webkit-box-pack: center;
+            justify-content: center;
+    font-size: 2rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    -webkit-box-shadow: 0 0.9rem 2rem rgba(0, 0, 0, 0.28);
+            box-shadow: 0 0.9rem 2rem rgba(0, 0, 0, 0.28);
+}
+
+.profile_button:focus .profile_avatar,
+.user_card:focus-within .profile_avatar {
+    -webkit-transform: scale(1.05);
+            transform: scale(1.05);
+    -webkit-box-shadow: 0 1rem 2.2rem rgba(0, 0, 0, 0.38);
+            box-shadow: 0 1rem 2.2rem rgba(0, 0, 0, 0.38);
+}
+
+.profile_badge {
+    position: absolute;
+    right: -0.15rem;
+    bottom: -0.1rem;
+    min-width: 2.2rem;
+    padding: 0.14rem 0.42rem;
+    border-radius: 999px;
+    background: rgba(8, 15, 24, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #d5ecf5;
+    font-size: 0.42em;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+}
+
+.profile_avatar_add {
+    background: rgba(255, 255, 255, 0.05);
+    border: 0.18rem dashed rgba(255, 255, 255, 0.22);
+    -webkit-box-shadow: none;
+            box-shadow: none;
+    font-size: 2.4rem;
+}
+
+.user_card_name {
+    font-size: 0.78em;
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+}
+
+.user_card_server,
+.user_card_status {
+    color: #98a3b0;
+    font-size: 0.5em;
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.user_card_status {
+    color: #7ecfe8;
+    margin-top: 0.2rem;
+}
+
+.user_card_status.user_card_status_error {
+    color: #ff9b82;
+}
+
+.user_card_actions {
+    display: -webkit-box;
+    display: flex;
+    -webkit-box-orient: vertical;
+    -webkit-box-direction: normal;
+            flex-direction: column;
+    -webkit-box-align: stretch;
+            align-items: stretch;
+    gap: 0.45rem;
+    margin-top: 0.7rem;
+}
+
+.profile_remove {
+    width: 100%;
+    min-width: 0;
+    padding: 0.42rem 0.95rem;
+    font-size: 0.5em;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #b2bcc8;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.profile_pin {
+    width: 100%;
+    min-width: 0;
+    padding: 0.42rem 0.95rem;
+    font-size: 0.5em;
+    border-radius: 999px;
+    background: rgba(0, 164, 220, 0.08);
+    color: #c7ebf7;
+    border: 1px solid rgba(73, 208, 255, 0.28);
+}
+
+.profile_pin:focus {
+    background: rgba(0, 164, 220, 0.24);
+    color: #fff;
+    -webkit-box-shadow: 0 0 0 0.12rem rgba(73, 208, 255, 0.18);
+            box-shadow: 0 0 0 0.12rem rgba(73, 208, 255, 0.18);
+}
+
+.profile_remove:focus {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+}
+
+.secondary_button {
+    background: #151515;
+    border: 2px solid #292929;
+}
+
+.user_card_add .user_card_server,
+.user_card_add .user_card_status {
+    white-space: normal;
+}
+
+.user_card_add .profile_button {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
 }
 
 input[type=checkbox]:focus+label {
