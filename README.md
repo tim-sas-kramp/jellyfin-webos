@@ -26,6 +26,8 @@ The general development workflow looks like this:
 - Compile an IPK either with the IDE or with ares-package
 - Test the app on the emulator or ares-server or install it on your tv by following http://webostv.developer.lge.com/develop/app-test/
 
+Deployment commands for this repo are documented in [`docs/deployment.md`](docs/deployment.md).
+
 There are three ways to create the required build environment:
 
 - Full WebOS SDK Installation

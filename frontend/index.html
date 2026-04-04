@@ -21,6 +21,13 @@
 		<div id="logo">
 			<img src="assets/banner-dark.png">
 		</div>
+		<div id="userPicker" style="display: none;">
+			<div class="picker_header">
+				<h1 id="pickerTitle">Who's watching?</h1>
+				<p id="sessionMessage" class="helpertext">Choose a profile or add another account.</p>
+			</div>
+			<ul id="userlist"></ul>
+		</div>
 		<div id="serverInfoForm">
 			<p id="error" style="display: none;">&nbsp;</p>
 			<form onsubmit="return false;">
@@ -33,12 +40,34 @@
 					<label for="auto_connect">Automatically connect on app launch.</label>
 				</div>
 				<button id="connect" type="button" onclick="return handleServerSelect();" tabindex="2">Connect</button>
+				<button id="backToUsers" type="button" onclick="showUserPicker();" tabindex="3" style="display: none;">Back</button>
 				<ul id="serverlist"></ul>
 			</form>
 		</div>
 		<div id="busy" style="display:none;">
 			<h1>Connecting...</h1>
 			<button id="abort" onclick="abort();">Abort</button>
+		</div>
+	</div>
+	<div id="pinModal" class="dialog_overlay" style="display:none;">
+		<div class="dialog_card">
+			<h2 id="pinDialogTitle">Profile PIN</h2>
+			<p id="pinDialogMessage" class="helpertext">Enter a 4-digit PIN.</p>
+			<p id="pinDialogError" class="dialog_error" style="display:none;">&nbsp;</p>
+			<div id="pinCurrentGroup" class="dialog_field" style="display:none;">
+				<input type="password" id="pinCurrent" inputmode="numeric" maxlength="4" placeholder="Current PIN" tabindex="0" readonly />
+			</div>
+			<div id="pinNewGroup" class="dialog_field" style="display:none;">
+				<input type="password" id="pinNew" inputmode="numeric" maxlength="4" placeholder="New 4-digit PIN" tabindex="0" readonly />
+			</div>
+			<div id="pinConfirmGroup" class="dialog_field" style="display:none;">
+				<input type="password" id="pinConfirm" inputmode="numeric" maxlength="4" placeholder="Confirm PIN" tabindex="0" readonly />
+			</div>
+			<div class="dialog_actions">
+				<button id="pinPrimary" type="button" onclick="submitPinDialog();" tabindex="0">Continue</button>
+				<button id="pinRemove" type="button" class="secondary_button" onclick="removeSessionPinFromDialog();" tabindex="0" style="display:none;">Remove PIN</button>
+				<button id="pinCancel" type="button" class="secondary_button" onclick="cancelPinDialog();" tabindex="0">Cancel</button>
+			</div>
 		</div>
 	</div>
 	<iframe id="contentFrame" style="display: none;"></iframe>
