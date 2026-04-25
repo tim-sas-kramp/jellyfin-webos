@@ -108,6 +108,19 @@
             postMessage('selectServer');
         },
 
+        onLocalUserSignedIn: function (user, accessToken) {
+            postMessage('jf-local-user-signed-in', {
+                user: user,
+                accessToken: accessToken
+            });
+            return Promise.resolve();
+        },
+
+        onLocalUserSignedOut: function (logoutInfo) {
+            postMessage('jf-local-user-signed-out', logoutInfo);
+            return Promise.resolve();
+        },
+
         downloadFile: function (url) {
             postMessage('downloadFile', { url: url });
         },

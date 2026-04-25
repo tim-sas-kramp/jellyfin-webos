@@ -8,6 +8,9 @@
 var curr_req = false;
 var server_info = false;
 var manifest = false;
+var whoWatching = null;
+var pendingAuthContext = null;
+var activeAccountContext = null;
 
 var appInfo = {
     deviceId: null,
@@ -144,7 +147,12 @@ function getDeviceId() {
 }
 
 function navigationInit() {
-    if (isVisible(document.querySelector('#connect'))) {
+    if (isVisible(document.querySelector('#whoWatchingModal'))) {
+        var modalButton = document.querySelector('#whoWatchingModal button');
+        if (modalButton) {
+            modalButton.focus();
+        }
+    } else if (isVisible(document.querySelector('#connect'))) {
         document.querySelector('#connect').focus()
     } else if (isVisible(document.querySelector('#abort'))) {
         document.querySelector('#abort').focus()
@@ -345,7 +353,7 @@ function handleSuccessManifest(data, baseurl) {
 
         // avoid Promise as it's buggy in some WebOS
             getTextToInject(function (bundle) {
-                handoff(hosturl, bundle);
+                showWhoWatchingForServer(info, hosturl, bundle);
             }, function (error) {
                 console.error(error);
                 displayError(error);
@@ -365,6 +373,197 @@ function handleSuccessManifest(data, baseurl) {
     storage.set('connected_server', servers)
     console.log("martin:handleSuccessManifest added server");
     console.log(info);
+}
+
+function getServerId(info) {
+    return info && (info.id || info.Id || info.ServerId);
+}
+
+function ensureWhoWatchingModal() {
+    if (!whoWatching) {
+        whoWatching = new WhoWatchingModal(document);
+    }
+
+    return whoWatching;
+}
+
+function showServerSelection() {
+    pendingAuthContext = null;
+    activeAccountContext = null;
+    appInfo.deviceId = getDeviceId();
+
+    if (whoWatching) {
+        whoWatching.hide();
+    }
+
+    document.querySelector('.container').style.display = '';
+    document.querySelector('#serverInfoForm').style.display = '';
+    document.querySelector('#busy').style.display = 'none';
+    startDiscovery();
+    navigationInit();
+}
+
+function showWhoWatchingForServer(info, hosturl, bundle, error) {
+    var serverId = getServerId(info);
+    var modal = ensureWhoWatchingModal();
+    var accounts = accountStore.listForServer(serverId);
+
+    document.querySelector('.container').style.display = '';
+    document.querySelector('#serverInfoForm').style.display = 'none';
+    document.querySelector('#busy').style.display = 'none';
+
+    modal.show({
+        server: info,
+        accounts: accounts,
+        error: error,
+        onSelectAccount: function (account) {
+            activateRememberedAccount(info, hosturl, bundle, account);
+        },
+        onAddAccount: function () {
+            beginAddAccount(info, hosturl, bundle);
+        },
+        onRemoveAccount: function (account) {
+            accountStore.removeAccount(serverId, account.accountId);
+            showWhoWatchingForServer(info, hosturl, bundle);
+        },
+        onChangeServer: showServerSelection
+    });
+}
+
+function beginAddAccount(info, hosturl, bundle) {
+    var deviceId = AccountStore.generateDeviceId();
+
+    pendingAuthContext = {
+        mode: 'add',
+        serverInfo: info,
+        deviceId: deviceId
+    };
+    activeAccountContext = null;
+
+    handoffWithCredential(info, hosturl, bundle, null, deviceId);
+}
+
+function beginReauth(info, hosturl, bundle, account) {
+    var deviceId = account.deviceId || AccountStore.generateDeviceId();
+
+    pendingAuthContext = {
+        mode: 'reauth',
+        serverInfo: info,
+        accountId: account.accountId,
+        expectedUserId: account.userId,
+        deviceId: deviceId
+    };
+    activeAccountContext = null;
+
+    handoffWithCredential(info, hosturl, bundle, null, deviceId);
+}
+
+function activateRememberedAccount(info, hosturl, bundle, account) {
+    if (!account.accessToken || account.needsReauth) {
+        beginReauth(info, hosturl, bundle, account);
+        return;
+    }
+
+    ensureWhoWatchingModal().setError('Checking account...');
+
+    curr_req = AccountAuth.validateToken(ajax, info, account, {
+        appName: appInfo.appName,
+        appVersion: appInfo.appVersion,
+        deviceName: appInfo.deviceName,
+        deviceId: account.deviceId
+    }, {
+        success: function (user) {
+            curr_req = false;
+            var updatedAccount = accountStore.updateDisplayInfo(getServerId(info), account.accountId, user) || accountStore.markUsed(getServerId(info), account.accountId) || account;
+            handoffWithCredential(info, hosturl, bundle, updatedAccount, updatedAccount.deviceId);
+        },
+        invalid: function () {
+            curr_req = false;
+            var invalidAccount = accountStore.markNeedsReauth(getServerId(info), account.accountId) || account;
+            beginReauth(info, hosturl, bundle, invalidAccount);
+        },
+        networkError: function () {
+            curr_req = false;
+            ensureWhoWatchingModal().setError('Could not validate this account. Check the connection and try again.');
+        }
+    });
+}
+
+function generateSeedNonce() {
+    return AccountStore.generateDeviceId() + '-' + new Date().getTime();
+}
+
+function handoffWithCredential(info, hosturl, bundle, account, deviceId) {
+    var credential = AccountAuth.createJellyfinWebServerCredential(info, account, new Date().getTime());
+    var seedNonce = generateSeedNonce();
+
+    if (whoWatching) {
+        whoWatching.hide();
+    }
+
+    displayConnecting();
+    appInfo.deviceId = deviceId || getDeviceId();
+
+    if (account) {
+        pendingAuthContext = null;
+        activeAccountContext = {
+            serverInfo: info,
+            accountId: account.accountId,
+            deviceId: account.deviceId
+        };
+    }
+
+    handoff(hosturl, bundle, {
+        serverCredential: credential,
+        credentialSeedUrl: AccountAuth.createCredentialSeedUrl(info, seedNonce),
+        seedNonce: seedNonce
+    });
+}
+
+function handleLocalUserSignedIn(data) {
+    if (!data || !data.user || !data.accessToken) {
+        return;
+    }
+
+    var context = pendingAuthContext || activeAccountContext;
+    if (!context || !context.serverInfo) {
+        return;
+    }
+
+    var account = accountStore.saveAuthenticatedAccount(
+        context.serverInfo,
+        data.user,
+        data.accessToken,
+        context.deviceId || appInfo.deviceId
+    );
+
+    pendingAuthContext = null;
+    activeAccountContext = {
+        serverInfo: context.serverInfo,
+        accountId: account.accountId,
+        deviceId: account.deviceId
+    };
+}
+
+function handleLocalUserSignedOut(logoutInfo) {
+    var serverId = logoutInfo && logoutInfo.serverId;
+    var accountId = activeAccountContext && activeAccountContext.accountId;
+
+    if (!serverId && activeAccountContext && activeAccountContext.serverInfo) {
+        serverId = getServerId(activeAccountContext.serverInfo);
+    }
+
+    if (!accountId && serverId) {
+        var selected = accountStore.getSelectedAccount(serverId);
+        accountId = selected && selected.accountId;
+    }
+
+    if (serverId && accountId) {
+        accountStore.markNeedsReauth(serverId, accountId);
+    }
+
+    activeAccountContext = null;
+    pendingAuthContext = null;
 }
 
 function handleAbort() {
@@ -452,9 +651,10 @@ function injectStyleText(document, text) {
     document.body.appendChild(style);
 }
 
-function handoff(url, bundle) {
+function handoff(url, bundle, options) {
     console.log("Handoff called with: ", url)
     //hideConnecting();
+    options = options || {};
 
     stopDiscovery();
     document.querySelector('.container').style.display = 'none';
@@ -463,9 +663,37 @@ function handoff(url, bundle) {
     var contentWindow = contentFrame.contentWindow;
 
     var timer;
+    var awaitingCredentialSeed = !!options.serverCredential;
+
+    function seedCredentialsAndNavigate() {
+        try {
+            AccountAuth.seedJellyfinWebCredentials(contentFrame.contentWindow.localStorage, options.serverCredential);
+            awaitingCredentialSeed = false;
+            contentFrame.contentWindow.location.replace(url);
+            return true;
+        } catch (err) {
+            console.warn('Direct credential seed failed, falling back to injected seed script.', err);
+            try {
+                injectScriptText(contentFrame.contentDocument, AccountAuth.createCredentialSeedScript(options.serverCredential, url, options.seedNonce));
+                awaitingCredentialSeed = false;
+                return true;
+            } catch (scriptErr) {
+                console.error('Failed to seed Jellyfin credentials.', scriptErr);
+                awaitingCredentialSeed = false;
+                return false;
+            }
+        }
+    }
 
     function onLoad() {
         clearInterval(timer);
+
+        if (awaitingCredentialSeed) {
+            if (seedCredentialsAndNavigate()) {
+                return;
+            }
+        }
+
         contentFrame.contentDocument.removeEventListener('DOMContentLoaded', onLoad);
         contentFrame.removeEventListener('load', onLoad);
 
@@ -507,7 +735,7 @@ function handoff(url, bundle) {
     contentFrame.addEventListener('load', onLoad);
 
     contentFrame.style.display = '';
-    contentFrame.src = url;
+    contentFrame.src = options.credentialSeedUrl || url;
 }
 
 window.addEventListener('message', function (msg) {
@@ -517,11 +745,15 @@ window.addEventListener('message', function (msg) {
 
     switch (msg.type) {
         case 'selectServer':
-            startDiscovery();
-            document.querySelector('.container').style.display = '';
-            hideConnecting();
             contentFrame.style.display = 'none';
             contentFrame.src = '';
+            showServerSelection();
+            break;
+        case 'jf-local-user-signed-in':
+            handleLocalUserSignedIn(msg.data);
+            break;
+        case 'jf-local-user-signed-out':
+            handleLocalUserSignedOut(msg.data);
             break;
         case 'AppHost.exit':
             webOS.platformBack();

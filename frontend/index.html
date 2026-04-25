@@ -13,6 +13,9 @@
 	<script src="webOSTVjs-1.2.11/webOSTV-dev.js" charset="utf-8"></script>
 	<script src="js/ajax.js" charset="utf-8"></script>
 	<script src="js/storage.js" charset="utf-8"></script>
+	<script src="js/accountStore.js" charset="utf-8"></script>
+	<script src="js/accountAuth.js" charset="utf-8"></script>
+	<script src="js/whoWatchingModal.js" charset="utf-8"></script>
 	<script src="js/index.js"></script>
 </head>
 
@@ -39,6 +42,18 @@
 		<div id="busy" style="display:none;">
 			<h1>Connecting...</h1>
 			<button id="abort" onclick="abort();">Abort</button>
+		</div>
+		<div id="whoWatchingModal" class="who-modal" style="display:none;" aria-hidden="true">
+			<div class="who-panel">
+				<h1 id="whoWatchingTitle">Who's watching?</h1>
+				<p id="whoWatchingSubtitle">&nbsp;</p>
+				<p id="whoWatchingError" class="who-error" style="display:none;">&nbsp;</p>
+				<div id="whoWatchingAccounts" class="who-grid"></div>
+				<div class="who-actions">
+					<button id="manageAccounts" type="button">Manage accounts</button>
+					<button id="changeServer" type="button">Change server</button>
+				</div>
+			</div>
 		</div>
 	</div>
 	<iframe id="contentFrame" style="display: none;"></iframe>
