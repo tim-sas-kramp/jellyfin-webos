@@ -159,6 +159,43 @@ test('per-account device id remains stable across token updates', () => {
     assert.match(AccountStore.generateDeviceId({ getRandomValues: (bytes) => bytes.fill(1) }), /^webos-/);
 });
 
+test('account store sets, verifies, and clears account PINs', () => {
+    const store = new AccountStore(createStorage());
+    const account = store.saveAuthenticatedAccount(server('s1'), user('u1'), 'token-a', 'device-a');
+
+    assert.equal(account.pinProtected, false);
+    assert.equal(AccountStore.isValidPin('1234'), true);
+    assert.equal(AccountStore.isValidPin('123456'), true);
+    assert.equal(AccountStore.isValidPin('1234567'), false);
+    assert.equal(AccountStore.isValidPin('123'), false);
+    assert.equal(AccountStore.isValidPin('abcd'), false);
+
+    const protectedAccount = store.setPin('s1', account.accountId, '1234');
+    assert.equal(protectedAccount.pinProtected, true);
+    assert.equal(protectedAccount.pinLength, 4);
+    assert.equal(protectedAccount.pinHash, undefined);
+    assert.equal(protectedAccount.pinSalt, undefined);
+    assert.equal(store.verifyPin('s1', account.accountId, '1234'), true);
+    assert.equal(store.verifyPin('s1', account.accountId, '9999'), false);
+
+    const cleared = store.clearPin('s1', account.accountId);
+    assert.equal(cleared.pinProtected, false);
+    assert.equal(cleared.pinLength, null);
+    assert.equal(store.verifyPin('s1', account.accountId, '1234'), false);
+});
+
+test('account PIN survives token refreshes', () => {
+    const store = new AccountStore(createStorage());
+    const account = store.saveAuthenticatedAccount(server('s1'), user('u1'), 'token-a', 'device-a');
+
+    store.setPin('s1', account.accountId, '2468');
+    const updated = store.saveAuthenticatedAccount(server('s1'), user('u1', 'Updated User'), 'token-b', 'device-b');
+
+    assert.equal(updated.pinProtected, true);
+    assert.equal(store.verifyPin('s1', account.accountId, '2468'), true);
+    assert.equal(store.verifyPin('s1', account.accountId, '1357'), false);
+});
+
 test('jellyfin web credential merge replaces selected server and preserves others', () => {
     const existing = {
         Servers: [

@@ -31,6 +31,14 @@
         return JSON.parse(JSON.stringify(value));
     }
 
+    function publicAccount(account) {
+        var result = clone(account);
+        result.pinProtected = !!result.pinHash;
+        delete result.pinHash;
+        delete result.pinSalt;
+        return result;
+    }
+
     function readStorage(storageBackend, key) {
         var value = storageBackend.get(key);
         if (!value) {
@@ -95,6 +103,22 @@
         return 'webos-' + toHex(bytes);
     }
 
+    function isValidPin(pin) {
+        return typeof pin === 'string' && /^\d{4,6}$/.test(pin);
+    }
+
+    function hashPin(pin, salt) {
+        var input = salt + ':' + pin;
+        var hash = 2166136261;
+
+        for (var i = 0; i < input.length; i++) {
+            hash ^= input.charCodeAt(i);
+            hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+        }
+
+        return ('00000000' + (hash >>> 0).toString(16)).slice(-8);
+    }
+
     function normalizeState(state) {
         if (!state || typeof state !== 'object') {
             state = {};
@@ -115,6 +139,8 @@
     }
 
     AccountStore.generateDeviceId = generateDeviceId;
+    AccountStore.isValidPin = isValidPin;
+    AccountStore.hashPin = hashPin;
 
     AccountStore.prototype._load = function () {
         return normalizeState(readStorage(this.storage, this.key));
@@ -152,7 +178,7 @@
         var accounts = [];
         for (var accountId in serverState.accounts) {
             if (serverState.accounts.hasOwnProperty(accountId)) {
-                accounts.push(clone(serverState.accounts[accountId]));
+                accounts.push(publicAccount(serverState.accounts[accountId]));
             }
         }
 
@@ -172,7 +198,7 @@
         }
 
         var account = serverState.accounts[serverState.selectedAccountId];
-        return account ? clone(account) : null;
+        return account ? publicAccount(account) : null;
     };
 
     AccountStore.prototype.setSelectedAccount = function (serverId, accountId) {
@@ -221,14 +247,18 @@
             lastUsedAt: timestamp,
             lastValidatedAt: accessToken ? timestamp : existing.lastValidatedAt || null,
             needsReauth: !accessToken,
-            imageTag: user.PrimaryImageTag || user.primaryImageTag || existing.imageTag || null
+            imageTag: user.PrimaryImageTag || user.primaryImageTag || existing.imageTag || null,
+            pinHash: existing.pinHash || null,
+            pinSalt: existing.pinSalt || null,
+            pinSetAt: existing.pinSetAt || null,
+            pinLength: existing.pinLength || null
         };
 
         serverState.accounts[accountId] = account;
         serverState.selectedAccountId = accountId;
         this._save(state);
 
-        return clone(account);
+        return publicAccount(account);
     };
 
     AccountStore.prototype.updateDisplayInfo = function (serverId, accountId, user) {
@@ -247,7 +277,7 @@
         account.needsReauth = false;
 
         this._save(state);
-        return clone(account);
+        return publicAccount(account);
     };
 
     AccountStore.prototype.markNeedsReauth = function (serverId, accountId) {
@@ -262,7 +292,7 @@
         account.accessToken = null;
         account.needsReauth = true;
         this._save(state);
-        return clone(account);
+        return publicAccount(account);
     };
 
     AccountStore.prototype.markUsed = function (serverId, accountId) {
@@ -277,7 +307,61 @@
         account.lastUsedAt = now();
         serverState.selectedAccountId = accountId;
         this._save(state);
-        return clone(account);
+        return publicAccount(account);
+    };
+
+    AccountStore.prototype.setPin = function (serverId, accountId, pin) {
+        if (!isValidPin(pin)) {
+            throw new Error('PIN must be 4 to 6 digits');
+        }
+
+        var state = this._load();
+        var serverState = this._server(state, serverId);
+        var account = serverState.accounts[accountId];
+
+        if (!account) {
+            throw new Error('account not found');
+        }
+
+        account.pinSalt = generateDeviceId();
+        account.pinHash = hashPin(pin, account.pinSalt);
+        account.pinSetAt = now();
+        account.pinLength = pin.length;
+        this._save(state);
+        return publicAccount(account);
+    };
+
+    AccountStore.prototype.clearPin = function (serverId, accountId) {
+        var state = this._load();
+        var serverState = this._server(state, serverId);
+        var account = serverState.accounts[accountId];
+
+        if (!account) {
+            throw new Error('account not found');
+        }
+
+        account.pinSalt = null;
+        account.pinHash = null;
+        account.pinSetAt = null;
+        account.pinLength = null;
+        this._save(state);
+        return publicAccount(account);
+    };
+
+    AccountStore.prototype.verifyPin = function (serverId, accountId, pin) {
+        var state = this._load();
+        var serverState = state.servers[serverId];
+        var account = serverState && serverState.accounts && serverState.accounts[accountId];
+
+        if (!account || !account.pinHash || !account.pinSalt) {
+            return false;
+        }
+
+        if (!isValidPin(pin)) {
+            return false;
+        }
+
+        return hashPin(pin, account.pinSalt) === account.pinHash;
     };
 
     AccountStore.prototype.removeAccount = function (serverId, accountId) {

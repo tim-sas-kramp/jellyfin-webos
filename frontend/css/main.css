@@ -57,8 +57,10 @@ body {
 }
 
 #logo {
-    width: 40%;
-    margin-bottom: 2em;
+    width: 18%;
+    min-width: 9rem;
+    max-width: 16rem;
+    margin-bottom: 0.7em;
 }
 
 #logo img {
@@ -97,6 +99,7 @@ input[type=checkbox] {
 
 input[type=text],
 input[type=url],
+input[type=password],
 input[type=checkbox],
 textarea {
     border: 2px solid #292929;
@@ -106,6 +109,7 @@ textarea {
 
 input[type=text]:focus,
 input[type=url]:focus,
+input[type=password]:focus,
 input[type=checkbox]:focus,
 textarea:focus {
     border-color: #00A4DC;
@@ -113,6 +117,7 @@ textarea:focus {
 
 input[type=text],
 input[type=url],
+input[type=password],
 textarea,
 button {
     width: 100%;
@@ -165,7 +170,8 @@ server_card_url
 
 .who-modal {
     width: 86%;
-    max-width: 72rem;
+    max-width: 56rem;
+    text-align: center;
 }
 
 .container > .who-modal {
@@ -177,9 +183,9 @@ server_card_url
 }
 
 .who-panel h1 {
-    font-size: 2.1em;
+    font-size: 1.85em;
     line-height: 1;
-    margin: 0 0 0.2em;
+    margin: 0 0 0.15em;
 }
 
 .who-panel p {
@@ -204,7 +210,9 @@ server_card_url
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
-    margin: 0.8em 0 0.4em;
+    -webkit-justify-content: center;
+            justify-content: center;
+    margin: 0.75em 0 0.35em;
 }
 
 .who-empty {
@@ -218,8 +226,34 @@ server_card_url
     width: 11.5rem;
     height: 12.5rem;
     padding: 0.6rem;
-    margin: 0 0.6em 0.6em 0;
+    margin: 0 0.35em 0.6em;
     text-align: center;
+}
+
+div.who-account-tile {
+    background: #292929;
+    border-radius: 0.2rem;
+}
+
+.who-manage-card {
+    display: -webkit-box;
+    display: flex;
+    -webkit-flex-direction: column;
+            flex-direction: column;
+    height: auto;
+    min-height: 18.75rem;
+}
+
+.who-pin-card {
+    display: -webkit-box;
+    display: flex;
+    -webkit-flex-direction: column;
+            flex-direction: column;
+    width: 16.5rem;
+    height: auto;
+    min-height: 20.5rem;
+    background: #292929;
+    border-radius: 0.2rem;
 }
 
 .who-avatar {
@@ -260,11 +294,116 @@ server_card_url
 .who-actions {
     display: -webkit-box;
     display: flex;
+    -webkit-justify-content: center;
+            justify-content: center;
+    -webkit-flex-wrap: wrap;
+            flex-wrap: wrap;
 }
 
 .who-actions button {
     width: auto;
     min-width: 11rem;
     font-size: 0.7em;
-    margin-right: 0.6em;
+    margin: 0.4rem 0.3em;
+}
+
+.who-tile-actions {
+    margin-top: auto;
+    padding-top: 0.35rem;
+}
+
+.who-tile-actions button {
+    width: 100%;
+    font-size: 0.45em;
+    margin: 0.2rem 0;
+    padding: 0.35rem 0.45rem;
+    min-height: 2.05rem;
+}
+
+.pin-display {
+    width: 100%;
+    min-height: 2.25em;
+    margin: 0.5em auto 0.45em;
+    padding: 0.35em 0.5em;
+    border: 2px solid #292929;
+    border-radius: 0.2rem;
+    background-color: #181818;
+    color: #FFF;
+    font-size: 1.1em;
+    font-weight: bold;
+    letter-spacing: 0;
+    text-align: center;
+    display: -webkit-box;
+    display: flex;
+    -webkit-align-items: center;
+            align-items: center;
+    -webkit-justify-content: center;
+            justify-content: center;
+}
+
+.pin-keypad {
+    display: -webkit-box;
+    display: flex;
+    -webkit-flex-wrap: wrap;
+            flex-wrap: wrap;
+    -webkit-justify-content: center;
+            justify-content: center;
+    width: 15.6rem;
+    max-width: 100%;
+    margin: 0 auto 0.45em;
+}
+
+.pin-keypad button {
+    width: 4.4rem;
+    height: 3.3rem;
+    margin: 0.25rem;
+    padding: 0;
+    font-size: 0.72em;
+}
+
+.pin-keypad .pin-key-action {
+    font-size: 0.48em;
+}
+
+.who-inline-pin {
+    margin-top: 0.35rem;
+}
+
+.who-inline-pin-error {
+    color: #000;
+    font-size: 0.38em;
+    line-height: 1.15;
+    margin: 0.2rem 0;
+}
+
+.who-inline-pin .pin-display {
+    width: 90%;
+    min-height: 1.6rem;
+    margin: 0.25rem auto;
+    padding: 0.2rem 0.35rem;
+    font-size: 0.68em;
+}
+
+.who-inline-pin .pin-keypad {
+    width: 11.4rem;
+    margin: 0.15rem auto;
+}
+
+.who-inline-pin .pin-keypad button {
+    width: 3.35rem;
+    height: 2.25rem;
+    margin: 0.12rem;
+    font-size: 0.5em;
+}
+
+.who-inline-pin .pin-keypad .pin-key-action {
+    font-size: 0.36em;
+}
+
+.who-inline-pin-actions button {
+    width: auto;
+    min-width: 5.35rem;
+    font-size: 0.45em;
+    margin: 0.25rem 0.18rem 0;
+    padding: 0.35rem 0.45rem;
 }

@@ -51,22 +51,47 @@ function findIndex(array, currentNode) {
     }
 }
 
-function navigate(amount) {
+function getFocusableElements(scope) {
+    var root = scope || document;
+    var nodeList = root.querySelectorAll('input, button, a, area, object, select, textarea, [contenteditable]');
+    var elements = [];
+
+    for (var i = 0; i < nodeList.length; i++) {
+        if (isVisible(nodeList[i]) && !nodeList[i].disabled) {
+            elements.push(nodeList[i]);
+        }
+    }
+
+    return elements;
+}
+
+function navigate(amount, scope) {
     console.log("Navigating " + amount.toString() + "...")
     var element = document.activeElement;
     if (element === null) {
         navigationInit();
     } else if (!isVisible(element) || element.tagName == 'BODY') {
-        navigationInit();
+        var firstElements = getFocusableElements(scope);
+        if (firstElements[0]) {
+            firstElements[0].focus();
+        } else {
+            navigationInit();
+        }
     } else {
         //Isolate the node that we're after
-        const currentNode = element;
+        var currentNode = element;
 
         //find all tab-able elements
-        const allElements = document.querySelectorAll('input, button, a, area, object, select, textarea, [contenteditable]');
+        var allElements = getFocusableElements(scope);
 
         //Find the current tab index.
-        const currentIndex = findIndex(allElements, currentNode);
+        var currentIndex = findIndex(allElements, currentNode);
+        if (currentIndex === undefined) {
+            if (allElements[0]) {
+                allElements[0].focus();
+            }
+            return;
+        }
 
         //focus the following element
         if (allElements[currentIndex + amount])
@@ -74,20 +99,330 @@ function navigate(amount) {
     }
 }
 
+function isWhoWatchingVisible() {
+    var modal = document.querySelector('#whoWatchingModal');
+    return !!(modal && isVisible(modal));
+}
+
+function isPinPromptVisible() {
+    return !!(whoWatching && whoWatching.isPinPromptVisible && whoWatching.isPinPromptVisible());
+}
+
+function getDigitFromKeyCode(keyCode) {
+    if (keyCode >= 48 && keyCode <= 57) {
+        return keyCode - 48;
+    }
+
+    if (keyCode >= 96 && keyCode <= 105) {
+        return keyCode - 96;
+    }
+
+    return null;
+}
+
+function getPinPromptScope() {
+    return whoWatching && whoWatching.getPinPromptElement ? whoWatching.getPinPromptElement() : document.querySelector('.who-inline-pin');
+}
+
+function navigateWhoWatching(amount) {
+    var scope = isPinPromptVisible() ? getPinPromptScope() : document.querySelector('#whoWatchingModal');
+    navigate(amount, scope);
+}
+
+function hasClass(element, className) {
+    return !!(element && (' ' + element.className + ' ').indexOf(' ' + className + ' ') >= 0);
+}
+
+function findAncestorWithClass(element, className) {
+    while (element && element !== document) {
+        if (hasClass(element, className)) {
+            return element;
+        }
+        element = element.parentNode;
+    }
+
+    return null;
+}
+
+function indexOfElement(elements, element) {
+    if (!element) {
+        return -1;
+    }
+
+    for (var i = 0; i < elements.length; i++) {
+        if (elements[i] === element || (element.isEqualNode && element.isEqualNode(elements[i]))) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+function wrapIndex(index, length) {
+    if (!length) {
+        return -1;
+    }
+
+    if (index < 0) {
+        return length - 1;
+    }
+
+    if (index >= length) {
+        return 0;
+    }
+
+    return index;
+}
+
+function getVisibleMatches(selector, scope) {
+    var root = scope || document;
+    var nodeList = root.querySelectorAll(selector);
+    var elements = [];
+
+    for (var i = 0; i < nodeList.length; i++) {
+        if (isVisible(nodeList[i]) && !nodeList[i].disabled) {
+            elements.push(nodeList[i]);
+        }
+    }
+
+    return elements;
+}
+
+function getWhoGridItems() {
+    return getVisibleMatches('#whoWatchingAccounts > .who-account-tile', document);
+}
+
+function getWhoModalActions() {
+    return getVisibleMatches('#manageAccounts, #changeServer', document);
+}
+
+function getManageCardActions(card) {
+    return getVisibleMatches('.who-tile-actions button', card);
+}
+
+function getPinCardActions(card) {
+    return getVisibleMatches('.who-inline-pin button', card);
+}
+
+function focusModalAction(index) {
+    var actions = getWhoModalActions();
+
+    if (!actions.length) {
+        return false;
+    }
+
+    actions[Math.max(0, Math.min(index, actions.length - 1))].focus();
+    return true;
+}
+
+function focusGridItem(index, actionIndex) {
+    var items = getWhoGridItems();
+    var item;
+    var actions;
+
+    if (!items.length) {
+        return false;
+    }
+
+    index = Math.max(0, Math.min(index, items.length - 1));
+    item = items[index];
+
+    if (hasClass(item, 'who-pin-card')) {
+        actions = getPinCardActions(item);
+        if (actions.length) {
+            actionIndex = Math.max(0, Math.min(actionIndex || 0, actions.length - 1));
+            actions[actionIndex].focus();
+            return true;
+        }
+    }
+
+    if (hasClass(item, 'who-manage-card')) {
+        actions = getManageCardActions(item);
+        if (actions.length) {
+            actionIndex = Math.max(0, Math.min(actionIndex || 0, actions.length - 1));
+            actions[actionIndex].focus();
+            return true;
+        }
+    }
+
+    if (item.focus) {
+        item.focus();
+        return true;
+    }
+
+    return false;
+}
+
+function getFocusedGridInfo() {
+    var active = document.activeElement;
+    var tile = findAncestorWithClass(active, 'who-account-tile');
+    var items = getWhoGridItems();
+    var actions;
+
+    return {
+        active: active,
+        tile: tile,
+        items: items,
+        index: indexOfElement(items, tile),
+        actionIndex: tile && hasClass(tile, 'who-pin-card') ? indexOfElement(getPinCardActions(tile), active) : tile && hasClass(tile, 'who-manage-card') ? indexOfElement(getManageCardActions(tile), active) : -1
+    };
+}
+
+function isModalActionFocused() {
+    var active = document.activeElement;
+    return !!(active && (active.id === 'manageAccounts' || active.id === 'changeServer'));
+}
+
+function isPinBottomCancelKey(element) {
+    var label = element && element.innerText;
+    return hasClass(element, 'pin-key') && (label === '0' || label === 'Back');
+}
+
+function focusPinCancelButton() {
+    var scope = getPinPromptScope();
+    var cancelButton = scope && scope.querySelector('.who-inline-pin-cancel');
+
+    if (cancelButton && isVisible(cancelButton) && !cancelButton.disabled) {
+        cancelButton.focus();
+        return true;
+    }
+
+    return false;
+}
+
+function handleFocusedAccountDigit(digit) {
+    var info;
+    var account;
+
+    if (!isWhoWatchingVisible() || isPinPromptVisible() || digit === null || !whoWatching || !whoWatching.getFocusedAccount) {
+        return false;
+    }
+
+    info = getFocusedGridInfo();
+    if (!info.tile || !hasClass(info.tile, 'who-user-tile')) {
+        return false;
+    }
+
+    account = whoWatching.getFocusedAccount();
+    if (!account || !account.pinProtected || !whoWatching.selectFocusedAccount || !whoWatching.appendPinDigit) {
+        return false;
+    }
+
+    whoWatching.selectFocusedAccount();
+    whoWatching.appendPinDigit(digit);
+    return true;
+}
+
+function moveWhoWatchingHorizontal(amount) {
+    var info;
+    var nextIndex;
+    var actions;
+    var actionIndex;
+
+    if (isPinPromptVisible()) {
+        navigate(amount, getPinPromptScope());
+        return;
+    }
+
+    if (isModalActionFocused()) {
+        actions = getWhoModalActions();
+        actionIndex = indexOfElement(actions, document.activeElement);
+        actionIndex = wrapIndex(actionIndex + amount, actions.length);
+        if (actionIndex >= 0) {
+            actions[actionIndex].focus();
+        }
+        return;
+    }
+
+    info = getFocusedGridInfo();
+    if (info.index >= 0) {
+        nextIndex = wrapIndex(info.index + amount, info.items.length);
+        focusGridItem(nextIndex, info.actionIndex >= 0 ? info.actionIndex : 0);
+        return;
+    }
+
+    focusGridItem(0, 0) || focusModalAction(0);
+}
+
+function moveWhoWatchingUp() {
+    var info;
+    var actions;
+
+    if (isPinPromptVisible()) {
+        navigate(-3, getPinPromptScope());
+        return;
+    }
+
+    if (isModalActionFocused()) {
+        focusGridItem(0, 0);
+        return;
+    }
+
+    info = getFocusedGridInfo();
+    if (info.tile && hasClass(info.tile, 'who-manage-card')) {
+        actions = getManageCardActions(info.tile);
+        if (info.actionIndex > 0 && actions[info.actionIndex - 1]) {
+            actions[info.actionIndex - 1].focus();
+        }
+    }
+}
+
+function moveWhoWatchingDown() {
+    var info;
+    var actions;
+
+    if (isPinPromptVisible()) {
+        if (isPinBottomCancelKey(document.activeElement) && focusPinCancelButton()) {
+            return;
+        }
+
+        navigate(3, getPinPromptScope());
+        return;
+    }
+
+    if (isModalActionFocused()) {
+        return;
+    }
+
+    info = getFocusedGridInfo();
+    if (info.tile && hasClass(info.tile, 'who-manage-card')) {
+        actions = getManageCardActions(info.tile);
+        if (info.actionIndex >= 0 && info.actionIndex < actions.length - 1) {
+            actions[info.actionIndex + 1].focus();
+            return;
+        }
+    }
+
+    focusModalAction(0);
+}
 
 function upArrowPressed() {
+    if (isWhoWatchingVisible()) {
+        moveWhoWatchingUp();
+        return;
+    }
+
     navigate(-1);
 }
 
 function downArrowPressed() {
+    if (isWhoWatchingVisible()) {
+        moveWhoWatchingDown();
+        return;
+    }
+
     navigate(1);
 }
 function leftArrowPressed() {
-    // Your stuff here
+    if (isWhoWatchingVisible()) {
+        moveWhoWatchingHorizontal(-1);
+    }
 }
 
 function rightArrowPressed() {
-    // Your stuff here
+    if (isWhoWatchingVisible()) {
+        moveWhoWatchingHorizontal(1);
+    }
 }
 
 function backPressed() {
@@ -96,22 +431,36 @@ function backPressed() {
 
 document.onkeydown = function (evt) {
     evt = evt || window.event;
+    var digit = getDigitFromKeyCode(evt.keyCode);
+
+    if (whoWatching && whoWatching.handlePinKeyCode && whoWatching.handlePinKeyCode(evt.keyCode)) {
+        return false;
+    }
+
+    if (handleFocusedAccountDigit(digit)) {
+        return false;
+    }
+
     switch (evt.keyCode) {
         case 37:
             leftArrowPressed();
-            break;
+            return false;
         case 39:
             rightArrowPressed();
-            break;
+            return false;
         case 38:
             upArrowPressed();
-            break;
+            return false;
         case 40:
             downArrowPressed();
-            break;
+            return false;
         case 461: // Back
+            if (isPinPromptVisible()) {
+                whoWatching.hidePinPrompt();
+                return false;
+            }
             backPressed();
-            break;
+            return false;
     }
 };
 
@@ -147,8 +496,9 @@ function getDeviceId() {
 }
 
 function navigationInit() {
-    if (isVisible(document.querySelector('#whoWatchingModal'))) {
-        var modalButton = document.querySelector('#whoWatchingModal button');
+    if (isWhoWatchingVisible()) {
+        var pinScope = getPinPromptScope();
+        var modalButton = isPinPromptVisible() && pinScope ? pinScope.querySelector('button') : document.querySelector('#whoWatchingModal button');
         if (modalButton) {
             modalButton.focus();
         }
@@ -417,16 +767,160 @@ function showWhoWatchingForServer(info, hosturl, bundle, error) {
         accounts: accounts,
         error: error,
         onSelectAccount: function (account) {
-            activateRememberedAccount(info, hosturl, bundle, account);
+            selectAccountWithPin(info, hosturl, bundle, account);
         },
         onAddAccount: function () {
             beginAddAccount(info, hosturl, bundle);
         },
+        onSetPin: function (account) {
+            setPinForAccount(info, hosturl, bundle, account);
+        },
+        onClearPin: function (account) {
+            clearPinForAccount(info, hosturl, bundle, account);
+        },
         onRemoveAccount: function (account) {
-            accountStore.removeAccount(serverId, account.accountId);
-            showWhoWatchingForServer(info, hosturl, bundle);
+            removeAccountFromThisTv(info, hosturl, bundle, account);
         },
         onChangeServer: showServerSelection
+    });
+}
+
+function getAccountLabel(account) {
+    return account.userName || 'this account';
+}
+
+function getPinFormatError(pin) {
+    if (!AccountStore.isValidPin(pin)) {
+        return 'PIN must be 4 to 6 digits.';
+    }
+
+    return null;
+}
+
+function requireAccountPin(account, options, onSuccess) {
+    var modal = ensureWhoWatchingModal();
+
+    if (!account.pinProtected) {
+        return onSuccess ? onSuccess() : true;
+    }
+
+    modal.showPinPrompt({
+        account: account,
+        title: options.title || 'Enter PIN',
+        message: options.message || ('Enter the PIN for ' + getAccountLabel(account) + '.'),
+        buttonText: options.buttonText || 'Continue',
+        autoLength: account.pinLength,
+        formatError: getPinFormatError(''),
+        onSubmit: function (pin) {
+            var formatError = getPinFormatError(pin);
+            if (formatError) {
+                return formatError;
+            }
+
+            if (!accountStore.verifyPin(account.serverId, account.accountId, pin)) {
+                return 'Incorrect PIN.';
+            }
+
+            return onSuccess ? onSuccess() : true;
+        }
+    });
+
+    return false;
+}
+
+function selectAccountWithPin(info, hosturl, bundle, account) {
+    requireAccountPin(account, {
+        title: 'Enter PIN',
+        message: 'Enter the PIN for ' + getAccountLabel(account) + '.',
+        buttonText: 'Continue'
+    }, function () {
+        activateRememberedAccount(info, hosturl, bundle, account);
+        return true;
+    });
+}
+
+function promptForNewPin(info, hosturl, bundle, account) {
+    var modal = ensureWhoWatchingModal();
+    var firstPin = null;
+
+    modal.showPinPrompt({
+        account: account,
+        title: account.pinProtected ? 'Change PIN' : 'Set PIN',
+        message: 'Enter a 4 to 6 digit PIN for ' + getAccountLabel(account) + '.',
+        buttonText: 'Next',
+        formatError: getPinFormatError(''),
+        onSubmit: function (pin) {
+            var formatError = getPinFormatError(pin);
+            if (formatError) {
+                return formatError;
+            }
+
+            firstPin = pin;
+            modal.showPinPrompt({
+                account: account,
+                title: 'Confirm PIN',
+                message: 'Enter the same PIN again.',
+                buttonText: 'Save PIN',
+                autoLength: firstPin.length,
+                formatError: getPinFormatError(''),
+                onSubmit: function (confirmPin) {
+                    var confirmError = getPinFormatError(confirmPin);
+                    if (confirmError) {
+                        return confirmError;
+                    }
+
+                    if (confirmPin !== firstPin) {
+                        return 'PINs do not match.';
+                    }
+
+                    accountStore.setPin(account.serverId, account.accountId, firstPin);
+                    showWhoWatchingForServer(info, hosturl, bundle);
+                    return true;
+                }
+            });
+
+            return false;
+        }
+    });
+}
+
+function setPinForAccount(info, hosturl, bundle, account) {
+    if (!account.pinProtected) {
+        promptForNewPin(info, hosturl, bundle, account);
+        return;
+    }
+
+    requireAccountPin(account, {
+        title: 'Change PIN',
+        message: 'Enter the current PIN for ' + getAccountLabel(account) + '.',
+        buttonText: 'Continue'
+    }, function () {
+        promptForNewPin(info, hosturl, bundle, account);
+        return false;
+    });
+}
+
+function clearPinForAccount(info, hosturl, bundle, account) {
+    requireAccountPin(account, {
+        title: 'Clear PIN',
+        message: 'Enter the current PIN for ' + getAccountLabel(account) + '.',
+        buttonText: 'Clear PIN'
+    }, function () {
+        accountStore.clearPin(account.serverId, account.accountId);
+        showWhoWatchingForServer(info, hosturl, bundle);
+        return true;
+    });
+}
+
+function removeAccountFromThisTv(info, hosturl, bundle, account) {
+    requireAccountPin(account, {
+        title: 'Remove account',
+        message: 'Enter the PIN before removing ' + getAccountLabel(account) + ' from this TV.',
+        buttonText: 'Remove'
+    }, function () {
+        accountStore.removeAccount(account.serverId, account.accountId);
+        showWhoWatchingForServer(info, hosturl, bundle);
+        return true;
     });
 }
 
