@@ -2,6 +2,8 @@
 # Jellyfin for webOS
 This is a small wrapper around the web interface provided by the server (https://github.com/jellyfin/jellyfin-web) so most of the development happens there.
 
+## Multi-user support.
+This fork is a semi-custom client. Which extends the wrapper to include multiple user authentication. It allows for parental control using a pincode on the accounts. As soon as the authentication is finished, behavior is identical to the default Jellyfin client.
 
 ## Download
 
