@@ -8,3 +8,31 @@
 .layout-tv body::-webkit-scrollbar {
     display: none;
 }
+
+#app-user-menu .jfmu-switch-user-item .MuiListItemIcon-root > svg,
+#app-user-menu .jfmu-switch-user-item [class*="MuiListItemIcon"] > svg {
+    display: none !important;
+}
+
+#app-user-menu .jfmu-switch-user-item .MuiListItemIcon-root,
+#app-user-menu .jfmu-switch-user-item [class*="MuiListItemIcon"] {
+    display: flex;
+    align-items: center;
+}
+
+#app-user-menu .jfmu-switch-user-item .MuiListItemIcon-root::before,
+#app-user-menu .jfmu-switch-user-item [class*="MuiListItemIcon"]::before {
+    content: 'person';
+    font-family: 'Material Icons';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 1.5rem;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+}
