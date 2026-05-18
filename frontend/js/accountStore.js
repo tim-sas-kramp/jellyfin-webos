@@ -31,6 +31,30 @@
         return JSON.parse(JSON.stringify(value));
     }
 
+    function isSafeKey(key) {
+        return key !== '__proto__' && key !== 'constructor' && key !== 'prototype';
+    }
+
+    function hasOwnKey(object, key) {
+        return !!object && isSafeKey(key) && Object.prototype.hasOwnProperty.call(object, key);
+    }
+
+    function toSafeMap(object) {
+        var map = Object.create(null);
+
+        if (!object || typeof object !== 'object') {
+            return map;
+        }
+
+        for (var key in object) {
+            if (hasOwnKey(object, key)) {
+                map[key] = object[key];
+            }
+        }
+
+        return map;
+    }
+
     function publicAccount(account) {
         var result = clone(account);
         result.pinProtected = !!result.pinHash;
@@ -125,7 +149,7 @@
         }
 
         state.version = 1;
-        state.servers = state.servers || {};
+        state.servers = toSafeMap(state.servers);
         return state;
     }
 
@@ -152,14 +176,18 @@
     };
 
     AccountStore.prototype._server = function (state, serverId) {
-        if (!state.servers[serverId]) {
+        if (!isSafeKey(serverId)) {
+            throw new Error('server id is required');
+        }
+
+        if (!hasOwnKey(state.servers, serverId)) {
             state.servers[serverId] = {
                 selectedAccountId: null,
-                accounts: {}
+                accounts: Object.create(null)
             };
         }
 
-        state.servers[serverId].accounts = state.servers[serverId].accounts || {};
+        state.servers[serverId].accounts = toSafeMap(state.servers[serverId].accounts);
         return state.servers[serverId];
     };
 
@@ -169,7 +197,7 @@
 
     AccountStore.prototype.listForServer = function (serverId) {
         var state = this._load();
-        var serverState = state.servers[serverId];
+        var serverState = hasOwnKey(state.servers, serverId) ? state.servers[serverId] : null;
 
         if (!serverState || !serverState.accounts) {
             return [];
@@ -177,7 +205,7 @@
 
         var accounts = [];
         for (var accountId in serverState.accounts) {
-            if (serverState.accounts.hasOwnProperty(accountId)) {
+            if (hasOwnKey(serverState.accounts, accountId)) {
                 accounts.push(publicAccount(serverState.accounts[accountId]));
             }
         }
@@ -191,13 +219,15 @@
 
     AccountStore.prototype.getSelectedAccount = function (serverId) {
         var state = this._load();
-        var serverState = state.servers[serverId];
+        var serverState = hasOwnKey(state.servers, serverId) ? state.servers[serverId] : null;
 
         if (!serverState || !serverState.selectedAccountId || !serverState.accounts) {
             return null;
         }
 
-        var account = serverState.accounts[serverState.selectedAccountId];
+        var account = hasOwnKey(serverState.accounts, serverState.selectedAccountId)
+            ? serverState.accounts[serverState.selectedAccountId]
+            : null;
         return account ? publicAccount(account) : null;
     };
 
@@ -205,7 +235,7 @@
         var state = this._load();
         var serverState = this._server(state, serverId);
 
-        if (accountId && !serverState.accounts[accountId]) {
+        if (accountId && !hasOwnKey(serverState.accounts, accountId)) {
             throw new Error('account not found');
         }
 
@@ -232,7 +262,7 @@
         var state = this._load();
         var serverState = this._server(state, serverId);
         var accountId = serverId + ':' + userId;
-        var existing = serverState.accounts[accountId] || {};
+        var existing = hasOwnKey(serverState.accounts, accountId) ? serverState.accounts[accountId] : {};
         var timestamp = now();
 
         var account = {
@@ -264,7 +294,7 @@
     AccountStore.prototype.updateDisplayInfo = function (serverId, accountId, user) {
         var state = this._load();
         var serverState = this._server(state, serverId);
-        var account = serverState.accounts[accountId];
+        var account = hasOwnKey(serverState.accounts, accountId) ? serverState.accounts[accountId] : null;
 
         if (!account) {
             return null;
@@ -283,7 +313,7 @@
     AccountStore.prototype.markNeedsReauth = function (serverId, accountId) {
         var state = this._load();
         var serverState = this._server(state, serverId);
-        var account = serverState.accounts[accountId];
+        var account = hasOwnKey(serverState.accounts, accountId) ? serverState.accounts[accountId] : null;
 
         if (!account) {
             return null;
@@ -298,7 +328,7 @@
     AccountStore.prototype.markUsed = function (serverId, accountId) {
         var state = this._load();
         var serverState = this._server(state, serverId);
-        var account = serverState.accounts[accountId];
+        var account = hasOwnKey(serverState.accounts, accountId) ? serverState.accounts[accountId] : null;
 
         if (!account) {
             return null;
@@ -317,7 +347,7 @@
 
         var state = this._load();
         var serverState = this._server(state, serverId);
-        var account = serverState.accounts[accountId];
+        var account = hasOwnKey(serverState.accounts, accountId) ? serverState.accounts[accountId] : null;
 
         if (!account) {
             throw new Error('account not found');
@@ -334,7 +364,7 @@
     AccountStore.prototype.clearPin = function (serverId, accountId) {
         var state = this._load();
         var serverState = this._server(state, serverId);
-        var account = serverState.accounts[accountId];
+        var account = hasOwnKey(serverState.accounts, accountId) ? serverState.accounts[accountId] : null;
 
         if (!account) {
             throw new Error('account not found');
@@ -350,8 +380,8 @@
 
     AccountStore.prototype.verifyPin = function (serverId, accountId, pin) {
         var state = this._load();
-        var serverState = state.servers[serverId];
-        var account = serverState && serverState.accounts && serverState.accounts[accountId];
+        var serverState = hasOwnKey(state.servers, serverId) ? state.servers[serverId] : null;
+        var account = serverState && hasOwnKey(serverState.accounts, accountId) ? serverState.accounts[accountId] : null;
 
         if (!account || !account.pinHash || !account.pinSalt) {
             return false;
@@ -368,7 +398,9 @@
         var state = this._load();
         var serverState = this._server(state, serverId);
 
-        delete serverState.accounts[accountId];
+        if (hasOwnKey(serverState.accounts, accountId)) {
+            delete serverState.accounts[accountId];
+        }
 
         if (serverState.selectedAccountId === accountId) {
             serverState.selectedAccountId = null;

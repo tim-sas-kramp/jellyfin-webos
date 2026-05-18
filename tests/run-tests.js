@@ -124,6 +124,29 @@ test('account store isolates accounts per server', () => {
     assert.equal(store.listForServer('missing').length, 0);
 });
 
+test('account store ignores unsafe object keys', () => {
+    const storage = createStorage();
+    const maliciousAccounts = Object.create(null);
+    maliciousAccounts.__proto__ = {
+        accessToken: 'bad'
+    };
+    const maliciousServers = Object.create(null);
+    maliciousServers.__proto__ = {
+        selectedAccountId: '__proto__',
+        accounts: maliciousAccounts
+    };
+
+    storage.set('jf_multiuser_v1', {
+        version: 1,
+        servers: maliciousServers
+    });
+
+    const store = new AccountStore(storage);
+    assert.deepEqual(store.listForServer('__proto__'), []);
+    assert.equal(store.getSelectedAccount('__proto__'), null);
+    assert.equal(store.verifyPin('__proto__', '__proto__', '1234'), false);
+});
+
 test('who watching view model always shows modal for zero, one, or many accounts', () => {
     assert.equal(getWhoWatchingViewModel([]).alwaysShow, true);
     assert.equal(getWhoWatchingViewModel([]).showEmptyState, true);
